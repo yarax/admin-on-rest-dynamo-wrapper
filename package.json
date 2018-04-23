@@ -1,0 +1,44 @@
+{
+  "_from": "admin-on-rest-dynamo-wrapper",
+  "_id": "admin-on-rest-dynamo-wrapper@1.1.3",
+  "_inBundle": false,
+  "_integrity": "sha512-FSYFpaaY0GG65lbm52rcQMvVRC5CvKDo8EhvCSE4cp3RRCXPyeyU1tSAppIsxGIHULfpnQzzKxnef4D5JG57Bw==",
+  "_location": "/admin-on-rest-dynamo-wrapper",
+  "_phantomChildren": {},
+  "_requested": {
+    "type": "tag",
+    "registry": true,
+    "raw": "admin-on-rest-dynamo-wrapper",
+    "name": "admin-on-rest-dynamo-wrapper",
+    "escapedName": "admin-on-rest-dynamo-wrapper",
+    "rawSpec": "",
+    "saveSpec": null,
+    "fetchSpec": "latest"
+  },
+  "_requiredBy": [
+    "#USER"
+  ],
+  "_resolved": "https://registry.npmjs.org/admin-on-rest-dynamo-wrapper/-/admin-on-rest-dynamo-wrapper-1.1.3.tgz",
+  "_shasum": "e5e304958fc1e007ba0e12043d3cadb3f8eb7789",
+  "_spec": "admin-on-rest-dynamo-wrapper",
+  "_where": "/home/roman/cocomore/femibion-services/lambdas/promocodes",
+  "author": "",
+  "bugs": {
+    "url": "https://github.com/yarax/admin-on-rest-dynamo-wrapper/issues"
+  },
+  "bundleDependencies": false,
+  "deprecated": false,
+  "description": "",
+  "homepage": "https://github.com/yarax/admin-on-rest-dynamo-wrapper#readme",
+  "license": "ISC",
+  "main": "index.js",
+  "name": "admin-on-rest-dynamo-wrapper",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yarax/admin-on-rest-dynamo-wrapper.git"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "version": "1.1.3"
+}
