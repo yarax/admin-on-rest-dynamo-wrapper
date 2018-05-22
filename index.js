@@ -6,14 +6,14 @@
 function listWrapper(req/*: Request*/, res/*: Response*/) {
   return (Model/*: any*/)/*: Promise<{}>*/ => {
     //code.options.description
-    let searchField = null;
+    const searchFields = {};
     if (Model['$__'] && typeof(Model['$__'].table.schema.attributes) === 'object') {
       const attrs = Model['$__'].table.schema.attributes;
       Object.keys(attrs).forEach((attr) => {
         if (attrs[attr].options && typeof (attrs[attr].options.description) === 'string') {
           try {
             const conf = JSON.parse(attrs[attr].options.description);
-            if (conf.searchField) searchField = attr;
+            searchFields[attr] = conf.searchField;
           } catch(e) {
             console.log('Cannot parse field description', attrs[attr].options.description, ' of attr ', attr);
           }
@@ -26,11 +26,19 @@ function listWrapper(req/*: Request*/, res/*: Response*/) {
     const filter = req.query.filter;
 
     if (filter) {
-      if (!searchField) {
+      if (!Object.keys(searchFields).length) {
         console.log('Cannot apply filter without searchField');
       } else {
-        console.log('searchField', searchField, ' contains ', filter);
-        cursor.where(searchField).contains(filter);
+        const filterObj = JSON.parse(filter);
+        console.log('searchField', searchFields, ' contains ', filter);
+        Object.keys(filterObj).forEach(fieldName => {
+          if (!searchFields[fieldName]) {
+            throw new Error('Provided unknown search field' + fieldName);
+          }
+          console.log('where', fieldName, ' ', searchFields[fieldName], filterObj[fieldName]);
+          cursor.where(fieldName)[searchFields[fieldName]](filterObj[fieldName]);
+        });
+        
       }
     }
     if (lastKey && lastKey !== 'undefined') {
@@ -48,6 +56,16 @@ function listWrapper(req/*: Request*/, res/*: Response*/) {
   }
 }
 
+function updateObjectWrapper(req/*: Object*/, obj/*: {updatedBy? : string, updatedAt?: number}*/) {
+  const user = req.apiGateway && req.apiGateway.event && req.apiGateway.event.requestContext && req.apiGateway.event.requestContext.identity && req.apiGateway.event.requestContext.identity.cognitoAuthenticationProvider;
+  console.log(req, JSON.stringify(req.apiGateway));
+  if (user) {
+    obj.updatedBy = user;
+  }
+  obj.updatedAt = Date.now()
+  return obj;
+}
+
 function responseWrapper(res/*: Response*/) {
   return (items/*: DynamoList*/) => {
     res.set('x-lastkey', JSON.stringify(items.lastKey));
@@ -62,7 +80,8 @@ function responseWrapper(res/*: Response*/) {
 
 module.exports = {
   listWrapper,
-  responseWrapper
+  responseWrapper,
+  updateObjectWrapper
 }
 
 
