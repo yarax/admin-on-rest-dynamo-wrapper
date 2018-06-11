@@ -1,25 +1,42 @@
 // @flow
-/*:: type Request = {query: Object, get: Function} */;
-/*:: type Response = {set: Function, json: Function} */;
+/*:: type Request = {query: Object, get: Function, cookies: {adminmode?: string}} */;
+/*:: type Response = {set: Function, json: Function, status: Function, end: Function} */;
 /*:: type DynamoList = {length: number, lastKey: {}, scannedCount: number}*/
+
+const _get = require('lodash.get');
+
+function scanModelFields(Model/*: Object*/) {
+  const searchFields = {};
+  let attrs = {};
+  if (Model['$__'] && typeof(Model['$__'].table.schema.attributes) === 'object') {
+    attrs = Model['$__'].table.schema.attributes;
+    Object.keys(attrs).forEach((attr) => {
+      if (attrs[attr].options && typeof (attrs[attr].options.description) === 'string') {
+        try {
+          const conf = JSON.parse(attrs[attr].options.description);
+          searchFields[attr] = conf.searchField;
+        } catch(e) {
+          console.log('Cannot parse field description', attrs[attr].options.description, ' of attr ', attr);
+        }
+      }
+    });
+  }
+
+  return {
+    attrs,
+    searchFields
+  }
+}
+
 
 function listWrapper(req/*: Request*/, res/*: Response*/) {
   return (Model/*: any*/)/*: Promise<{}>*/ => {
     //code.options.description
-    const searchFields = {};
-    if (Model['$__'] && typeof(Model['$__'].table.schema.attributes) === 'object') {
-      const attrs = Model['$__'].table.schema.attributes;
-      Object.keys(attrs).forEach((attr) => {
-        if (attrs[attr].options && typeof (attrs[attr].options.description) === 'string') {
-          try {
-            const conf = JSON.parse(attrs[attr].options.description);
-            searchFields[attr] = conf.searchField;
-          } catch(e) {
-            console.log('Cannot parse field description', attrs[attr].options.description, ' of attr ', attr);
-          }
-        }
-      });
-    }
+
+
+    const {searchFields, attrs} = scanModelFields(Model);
+
+    console.log('searchFields', searchFields);
     const cursor = Model.scan();
     const lastKey = req.get('x-lastkey');
     const limit = req.query.per_page;
@@ -41,6 +58,18 @@ function listWrapper(req/*: Request*/, res/*: Response*/) {
         
       }
     }
+
+    const fromCMS = (req.cookies && req.cookies.adminmode) || req.query.fromCMS;
+
+    if (!fromCMS) {
+      if (attrs.isActive) {
+        cursor.where('isActive').eq('true');
+      }
+      if (attrs.state) {
+        cursor.where('state').eq('published');
+      }
+    }
+
     if (lastKey && lastKey !== 'undefined') {
       try {
         const parsedLastKey = JSON.parse(lastKey);
@@ -53,6 +82,46 @@ function listWrapper(req/*: Request*/, res/*: Response*/) {
       cursor.limit(limit);
     }
     return cursor;
+  }
+}
+
+function getOne(Model/*: Object*/, reqAcessor/*: string*/, conditionKey/*: string*/) {
+  return (req/*: Request*/, res/*: Response*/, next/*: (err: Error) => {} */) => {
+    const {searchFields, attrs} = scanModelFields(Model);
+    const fromCMS = (req.cookies && req.cookies.adminmode) || req.query.fromCMS;
+    
+    Model.get({
+      [conditionKey]: _get(req, reqAcessor)
+    }).then((data) => {
+      if (!data) return null;
+      if (!fromCMS) {
+        if (attrs.isActive && data.isActive !== 'true') {
+          console.log('item is failed to be isActive');
+          return null;
+        }
+        if (attrs.state && data.state !== 'published') {
+          console.log('item is failed to be published');
+          return null;
+        }
+      }
+      return data;
+    }).then(result => {
+      if (!result) {
+        res.status(404);
+        return res.end();
+      }
+      res.json(result);
+    });
+  }
+}
+
+function responseOneWrapper(res/*: Response*/) {
+  return (item/*: ?Object*/) => {
+    if (!item) {
+      res.status(404);
+      return res.end();
+    }
+    res.json(item);
   }
 }
 
@@ -79,6 +148,8 @@ function responseWrapper(res/*: Response*/) {
 }
 
 module.exports = {
+  responseOneWrapper,
+  getOne,
   listWrapper,
   responseWrapper,
   updateObjectWrapper
