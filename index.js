@@ -85,7 +85,7 @@ function listWrapper(req/*: Request*/, res/*: Response*/) {
   }
 }
 
-function getOne(Model/*: Object*/, reqAcessor/*: string*/, conditionKey/*: string*/) {
+function getOne(Model/*: Object*/, reqAcessor/*: string*/, conditionKey/*: string*/, additionalFilter/*: (item: Object) => Promise<any>*/) {
   return (req/*: Request*/, res/*: Response*/, next/*: (err: Error) => {} */) => {
     const {searchFields, attrs} = scanModelFields(Model);
     const fromCMS = (req.cookies && req.cookies.adminmode) || req.query.fromCMS;
@@ -105,6 +105,12 @@ function getOne(Model/*: Object*/, reqAcessor/*: string*/, conditionKey/*: strin
         }
       }
       return data;
+    }).then((result) => {
+      if (!result) return null;
+      if (additionalFilter) {
+        return additionalFilter(result);
+      }
+      return result;
     }).then(result => {
       if (!result) {
         res.status(404);
