@@ -85,7 +85,9 @@ function listWrapper(req/*: Request*/, res/*: Response*/) {
   }
 }
 
-function getOne(Model/*: Object*/, reqAcessor/*: string*/, conditionKey/*: string*/, additionalFilter/*: (item: Object) => Promise<any>*/) {
+/*:: type AddFilter = (item: Object, req: Request) => Promise<any> */
+
+function getOne(Model/*: Object*/, reqAcessor/*: string*/, conditionKey/*: string*/, additionalFilter/*: ?AddFilter*/) {
   return (req/*: Request*/, res/*: Response*/, next/*: (err: Error) => {} */) => {
     const {searchFields, attrs} = scanModelFields(Model);
     const fromCMS = (req.cookies && req.cookies.adminmode) || req.query.fromCMS;
@@ -108,7 +110,7 @@ function getOne(Model/*: Object*/, reqAcessor/*: string*/, conditionKey/*: strin
     }).then((result) => {
       if (!result) return null;
       if (additionalFilter) {
-        return additionalFilter(result);
+        return additionalFilter(result, req);
       }
       return result;
     }).then(result => {
@@ -117,7 +119,7 @@ function getOne(Model/*: Object*/, reqAcessor/*: string*/, conditionKey/*: strin
         return res.end();
       }
       res.json(result);
-    });
+    }).catch(next);
   }
 }
 
