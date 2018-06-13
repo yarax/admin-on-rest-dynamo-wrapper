@@ -40,7 +40,7 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "version": "1.2.3",
+  "version": "1.2.4",
   "dependencies": {
     "lodash.get": "^4.4.2"
   }
