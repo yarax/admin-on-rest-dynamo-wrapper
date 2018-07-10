@@ -60,7 +60,7 @@ function listWrapper(req/*: Request*/, res/*: Response*/) {
     }
 
     const fromCMS = (req.cookies && req.cookies.adminmode) || req.query.fromCMS;
-
+    console.log('attrs', attrs);
     if (!fromCMS) {
       if (attrs.isActive) {
         cursor.where('isActive').eq('true');
