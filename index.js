@@ -37,10 +37,12 @@ function listWrapper(req/*: Request*/, res/*: Response*/) {
     const {searchFields, attrs} = scanModelFields(Model);
 
     console.log('searchFields', searchFields);
-    const cursor = Model.scan();
+    
     const lastKey = req.get('x-lastkey');
     const limit = req.query.per_page;
     const filter = req.query.filter;
+
+    let cursor;
 
     if (filter) {
       if (!Object.keys(searchFields).length) {
@@ -48,15 +50,51 @@ function listWrapper(req/*: Request*/, res/*: Response*/) {
       } else {
         const filterObj = JSON.parse(filter);
         console.log('searchField', searchFields, ' contains ', filter);
+
+        // generate a query if any key is eq
+        let usedKey;
+        let isGlobalQuery = false;
         Object.keys(filterObj).forEach(fieldName => {
           if (!searchFields[fieldName]) {
             throw new Error('Provided unknown search field' + fieldName);
           }
-          console.log('where', fieldName, ' ', searchFields[fieldName], filterObj[fieldName]);
-          cursor.where(fieldName)[searchFields[fieldName]](filterObj[fieldName]);
+          if(!isGlobalQuery && searchFields[fieldName] == 'eq' && (attrs[fieldName].options['hashKey'] || attrs[fieldName].options['index'])){
+            usedKey = fieldName;
+            isGlobalQuery = attrs[fieldName].options['index'] != undefined;
+            let queryFilter = {}
+            queryFilter[fieldName] = {};
+            queryFilter[fieldName][searchFields[fieldName]] = filterObj[fieldName];
+            cursor = Model.query(queryFilter);
+            console.log('queryFilter', queryFilter);
+          }
+        });
+        if(!usedKey){
+          cursor = Model.scan();
+        }
+
+        Object.keys(filterObj).forEach(fieldName => {
+          if (!searchFields[fieldName]) {
+            throw new Error('Provided unknown search field' + fieldName);
+          }
+          if(usedKey != fieldName){
+            if(usedKey){
+              if(!isGlobalQuery && attrs[fieldName].options['rangeKey']){
+                console.log('rangeKey', fieldName, ' ', searchFields[fieldName], filterObj[fieldName]);
+                cursor.where(fieldName).eq(filterObj[fieldName]);
+              }else{
+                console.log('filter', fieldName, ' ', searchFields[fieldName], filterObj[fieldName]);
+                cursor.filter(fieldName)[searchFields[fieldName]](filterObj[fieldName]);
+              }
+            }else{
+              console.log('where', fieldName, ' ', searchFields[fieldName], filterObj[fieldName]);
+              cursor.where(fieldName)[searchFields[fieldName]](filterObj[fieldName]);
+            }
+          }
         });
         
       }
+    }else{
+      cursor = Model.scan();
     }
 
     const fromCMS = (req.cookies && req.cookies.adminmode) || req.query.fromCMS;
